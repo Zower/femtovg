@@ -3,34 +3,64 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
-## [0.8.0] - 2022-11-02
+## [0.9.2] - 2024-06-27
+
+ - Fix path rendering where the default path solidity would interfere with the path's
+   own winding direction (https://github.com/femtovg/femtovg/issues/124)
+ - Fix blurry text rendering when drawing on non-integer coordinates
+ - Bumped MSRV to 1.68.
+
+## [0.9.1] - 2024-04-12
+
+ - Fixed inability to introspect `Path` verbs by making `PathIter` and `Verb` public.
+ - Fixed rendering of text strokes with large font sizes.
+
+## [0.9.0] - 2024-02-27
+
+ - **breaking**: Removed pub key field in ImageId. This accidentally
+   exposed the implementation detail of the image store (generational-arena),
+   which has been replaced with slotmap.
+ - For WASM builds, require WebGL 2. This is supported by all major browsers
+   and needed to make `ImageFlags::REPEAT_X/Y` work.
+ - Bumped MSRV to 1.66.
+
+## [0.8.2] - 2024-01-20
+
+ - Improved performance when rendering large texts.
+ - Replace error logging to stderr with use of log crate.
+
+## [0.8.1] - 2023-12-18
+
+ - Fix documentation build on docs.rs.
+
+## [0.8.0] - 2023-11-02
 
  - Re-release 0.7.2 with major version bump. 0.7.2 was yanked because
    glow is a re-exported public dependency, that was bumped.
 
-## [0.7.2] - 2022-11-02
+## [0.7.2] - 2023-11-02
 
  - Bump internal dependencies.
 
-## [0.7.1] - 2022-06-14
+## [0.7.1] - 2023-06-14
 
 - Fix performance regression when drawing unclipped image path fills.
 
-## [0.7.0] - 2022-05-26
+## [0.7.0] - 2023-05-26
 
 ### Changed
 
  - Path drawing functions now take a `&Path` instead of a `&mut Path` and use interior mutability
    for caching.
 
-## [0.6.0] - 2022-02-06
+## [0.6.0] - 2023-02-06
 
 ### Changed
 
  - Changed `linear_gradient_stops` and `radial_gradient_stops` to take an `IntoIterator`
    instead of a slice slice for the color stops.
 
-## [0.5.0] - 2022-02-06
+## [0.5.0] - 2023-02-06
 
 ### Added
 
@@ -44,7 +74,7 @@ All notable changes to this project will be documented in this file.
  - `set_transform` takes a value of type `Transform2D` now instead of a parameter list.
  - `dimensions` of `ImageSource` returns a new `Size` type now.
 
-## [0.4.0] - 2022-01-27
+## [0.4.0] - 2023-01-27
 
 ### Added
 
@@ -156,3 +186,8 @@ All notable changes to this project will be documented in this file.
 [0.7.0]: https://github.com/femtovg/femtovg/releases/tag/v0.7.0
 [0.7.1]: https://github.com/femtovg/femtovg/releases/tag/v0.7.1
 [0.7.2]: https://github.com/femtovg/femtovg/releases/tag/v0.7.2
+[0.8.0]: https://github.com/femtovg/femtovg/releases/tag/v0.8.0
+[0.8.1]: https://github.com/femtovg/femtovg/releases/tag/v0.8.1
+[0.8.2]: https://github.com/femtovg/femtovg/releases/tag/v0.8.2
+[0.9.0]: https://github.com/femtovg/femtovg/releases/tag/v0.9.0
+[0.9.1]: https://github.com/femtovg/femtovg/releases/tag/v0.9.1

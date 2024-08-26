@@ -27,7 +27,7 @@ impl Renderer for Void {
         _native_texture: Self::NativeTexture,
         _info: ImageInfo,
     ) -> Result<Self::Image, ErrorKind> {
-        Err(ErrorKind::UnsuportedImageFromat)
+        Err(ErrorKind::UnsupportedImageFormat)
     }
 
     fn update_image(

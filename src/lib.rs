@@ -58,7 +58,7 @@ use paint::{GlyphTexture, PaintFlavor, StrokeSettings};
 
 mod path;
 use path::Convexity;
-pub use path::{Path, Solidity};
+pub use path::{Path, PathIter, Solidity, Verb};
 
 mod gradient_store;
 use gradient_store::GradientStore;
@@ -549,6 +549,13 @@ where
         let id = self.create_image_empty(size.width, size.height, src.format(), flags)?;
         self.images.update(&mut self.renderer, id, src, 0, 0)?;
         Ok(id)
+    }
+
+    /// Returns the native texture of an image given its ID.
+    pub fn get_native_texture(&self, id: ImageId) -> Result<T::NativeTexture, ErrorKind> {
+        self.get_image(id)
+            .ok_or(ErrorKind::ImageIdNotFound)
+            .and_then(|image| self.renderer.get_native_texture(image))
     }
 
     pub fn get_image(&self, id: ImageId) -> Option<&T::Image> {
@@ -1516,7 +1523,7 @@ impl Renderer for RecordingRenderer {
         _native_texture: Self::NativeTexture,
         _info: crate::ImageInfo,
     ) -> Result<Self::Image, ErrorKind> {
-        Err(ErrorKind::UnsuportedImageFromat)
+        Err(ErrorKind::UnsupportedImageFormat)
     }
 
     fn update_image(

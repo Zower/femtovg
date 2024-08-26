@@ -1,6 +1,7 @@
 use std::{
     borrow::Borrow,
     cell::RefCell,
+    collections::HashMap,
     ffi::OsStr,
     fs,
     hash::{Hash, Hasher},
@@ -10,9 +11,9 @@ use std::{
 };
 
 use fnv::{FnvBuildHasher, FnvHashMap, FnvHasher};
-use generational_arena::{Arena, Index};
 use lru::LruCache;
 use rustybuzz::ttf_parser;
+use slotmap::{DefaultKey, SlotMap};
 
 use unicode_bidi::BidiInfo;
 use unicode_segmentation::UnicodeSegmentation;
@@ -43,7 +44,7 @@ const DEFAULT_LRU_CACHE_CAPACITY: usize = 1000;
 
 /// A font handle.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct FontId(Index);
+pub struct FontId(DefaultKey);
 
 /// Text baseline vertical alignment:
 /// `Top`, `Middle`, `Alphabetic` (default), `Bottom`.
@@ -292,7 +293,7 @@ impl TextContext {
 }
 
 pub(crate) struct TextContextImpl {
-    fonts: Arena<Font>,
+    fonts: SlotMap<DefaultKey, Font>,
     shaping_run_cache: ShapingRunCache<FnvBuildHasher>,
     shaped_words_cache: ShapedWordsCache<FnvBuildHasher>,
 }
@@ -485,7 +486,7 @@ impl TextContextImpl {
     }
 
     pub fn measure_font(&mut self, font_size: f32, font_ids: &[Option<FontId>; 8]) -> Result<FontMetrics, ErrorKind> {
-        if let Some(Some(id)) = font_ids.get(0) {
+        if let Some(Some(id)) = font_ids.first() {
             if let Some(font) = self.font(*id) {
                 return Ok(font.metrics(font_size));
             }
@@ -591,7 +592,7 @@ fn shape_run(
     // this controls whether we should break within words
     let mut first_word_in_paragraph = true;
 
-    if let Some(paragraph) = bidi_info.paragraphs.get(0) {
+    if let Some(paragraph) = bidi_info.paragraphs.first() {
         let line = paragraph.range.clone();
 
         let (levels, runs) = bidi_info.visual_runs(paragraph, line);
@@ -1160,7 +1161,7 @@ impl GlyphAtlas {
             // anti-aliasing (ClearType®), and the atlas debug display is much
             // clearer with different colors. Also, Rgba8 is required for color
             // fonts (typically used for emojis).
-            let info = ImageInfo::new(ImageFlags::empty(), atlas.size().0, atlas.size().1, PixelFormat::Rgba8);
+            let info = ImageInfo::new(ImageFlags::NEAREST, atlas.size().0, atlas.size().1, PixelFormat::Rgba8);
             let image_id = canvas.images.alloc(&mut canvas.renderer, info)?;
 
             #[cfg(feature = "debug_inspector")]
@@ -1239,19 +1240,19 @@ pub(crate) fn render_direct<T: Renderer>(
     invscale: f32,
 ) -> Result<(), ErrorKind> {
     let text_context = canvas.text_context.clone();
-    let mut text_context = text_context.borrow_mut();
+    let text_context = text_context.borrow_mut();
 
-    let mut scaled = false;
+    let mut face_cache: HashMap<FontId, rustybuzz::Face> = HashMap::default();
 
     for glyph in &text_layout.glyphs {
         let (glyph_rendering, scale) = {
-            let font = text_context.font_mut(glyph.font_id).ok_or(ErrorKind::NoFontFound)?;
-            let face = font.face_ref();
+            let font = text_context.font(glyph.font_id).ok_or(ErrorKind::NoFontFound)?;
+            let face = face_cache.entry(glyph.font_id).or_insert_with(|| font.face_ref());
 
             let scale = font.scale(font_size);
 
             let glyph_rendering = if let Some(glyph_rendering) =
-                font.glyph_rendering_representation(&face, glyph.codepoint as u16, font_size as u16)
+                font.glyph_rendering_representation(face, glyph.codepoint as u16, font_size as u16)
             {
                 glyph_rendering
             } else {
@@ -1263,12 +1264,10 @@ pub(crate) fn render_direct<T: Renderer>(
 
         canvas.save();
 
-        let mut line_width = stroke.line_width;
-
-        if mode == RenderMode::Stroke && !scaled {
-            line_width /= scale;
-            scaled = true;
-        }
+        let line_width = match mode {
+            RenderMode::Fill => stroke.line_width,
+            RenderMode::Stroke => stroke.line_width / scale,
+        };
 
         canvas.translate(
             (glyph.x - glyph.bearing_x) * invscale,

@@ -89,16 +89,16 @@ impl OpenGl {
         attrs.antialias(false);
 
         use wasm_bindgen::JsCast;
-        let webgl1_context = match canvas.get_context_with_context_options("webgl", &attrs) {
-            Ok(Some(context)) => context.dyn_into::<web_sys::WebGlRenderingContext>().unwrap(),
+        let webgl2_context = match canvas.get_context_with_context_options("webgl2", &attrs) {
+            Ok(Some(context)) => context.dyn_into::<web_sys::WebGl2RenderingContext>().unwrap(),
             _ => {
                 return Err(ErrorKind::GeneralError(
-                    "Canvas::getContext failed to retrieve WebGL 1 context".to_owned(),
+                    "Canvas::getContext failed to retrieve WebGL 2 context".to_owned(),
                 ))
             }
         };
 
-        let context = glow::Context::from_webgl1_context(webgl1_context);
+        let context = glow::Context::from_webgl2_context(webgl2_context);
         Self::new_from_context(context, true)
     }
 
@@ -215,7 +215,7 @@ impl OpenGl {
             _ => "Unknown error",
         };
 
-        eprintln!("({err}) Error on {label} - {message}");
+        log::error!("({err}) Error on {label} - {message}");
     }
 
     fn gl_factor(factor: BlendFactor) -> u32 {
@@ -685,6 +685,10 @@ impl Renderer for OpenGl {
         unsafe {
             self.context.viewport(0, 0, width as i32, height as i32);
         }
+    }
+
+    fn get_native_texture(&self, image: &Self::Image) -> Result<Self::NativeTexture, ErrorKind> {
+        Ok(image.id())
     }
 
     fn render(&mut self, images: &mut ImageStore<Self::Image>, verts: &[Vertex], commands: Vec<Command>) {
